@@ -1,13 +1,14 @@
 const express = require('express');
 const Data = require("./userDb.js")
+const Post = require("../posts/postDb.js")
 const router = express.Router();
 
-router.post('/', (req, res) => {
+router.post('/',validatePost, (req, res) => {
   // do your magic!
   const newUser = req.body
 
     if(newUser){
-        Data.insert(newUser)
+        Post.insert(newUser)
         .then(post=> {
             res.status(201).json(post)
         }).catch(err => {
@@ -19,24 +20,9 @@ router.post('/', (req, res) => {
   }
 });
 
-router.post('/:id/posts', (req, res) => {
+router.post('/:id/posts',validateUserId, validatePost, (req, res) => {
   // do your magic!
-  const { id }  = req.params;
-  const payload = { ...req.body, user_id: id }
-    
-
-    Data.getUserPosts(id).then(response => {
-      console.log('this is id response',response)
-        if (response.id.length === 0) {
-          res.status(404).json({
-            errorMessage: "The post with the specified ID does not exist."
-          });
-        }
-      });
-      if (!req.body.text) {
-        return res.status(400).json({ errorMessage: "Please provide text for the comment." });
-      } else {
-        Data.insert(payload).then(response => {
+        Post.insert(req.body).then(response => {
             res.status(201).json(response);
           })
           .catch(err => {
@@ -45,8 +31,8 @@ router.post('/:id/posts', (req, res) => {
                 "There was an error while saving the comment to the database"
             });
           });
-      }
-});
+      })
+
 
 router.get('/', (req, res) => {
   // do your magic!
@@ -58,7 +44,7 @@ router.get('/', (req, res) => {
   })
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', validateUserId, (req, res) => {
   const { id } = req.params;
 
   Data.getById(id).then(found => {
@@ -73,23 +59,19 @@ router.get('/:id', (req, res) => {
   });
 })
 
-router.get('/:id/posts', (req, res) => {
+router.get('/:id/posts',validateUserId, (req, res) => {
   // do your magic!
   const { id } = req.params;
 
   Data.getUserPosts(id).then(found => {
-    if(found){
       res.status(200).json(found)
-    } else {
-      res.status(404).json({message: "Post from that user with that id does not exist"})
-    }
   }).catch(err => {
     console.log(err)
     res.status(500).json({error: "resources could not be retrieved"})
   })
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id',validateUserId, (req, res) => {
   // do your magic!
   const { id } = req.params;
 
@@ -105,12 +87,12 @@ router.delete('/:id', (req, res) => {
 })
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id',validateUserId,validateUser, (req, res) => {
   // do your magic!
   const changes = req.body;
-        const { id } = req.params;
+  const { id } = req.params;
         
-    if(changes.title && changes.contents){
+    if(changes.name){
         Data.update(id, changes)
         .then(post => {
             if(post){
@@ -131,18 +113,14 @@ router.put('/:id', (req, res) => {
 
 function validateUserId(req, res, next) {
   // do your magic!
-  const { id } = req.params;
-    Data.findById(id).then(found => {
+  const { id }= req.params;
+    Data.getById(id).then(found => {
       if(found){
-        
+        next()
       } else {
         res.status(400).json({ message: "invalid user id" })
       }
-    }).catch(err => {
-      console.log(err)
-      res.status(500).json({error: "error"})
     })
-  
 }
 
 function validateUser(req, res, next) {
